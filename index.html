@@ -1,139 +1,134 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
     <meta charset="UTF-8">
-   
-    <title>Document</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker Hand History to XML Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            white-space: pre-wrap; /* For maintaining XML format */
+            font-family: monospace;
+            font-size: 16px;
+            background-color: #f4f4f4;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
+    <h1>Poker Hand History to XML Converter</h1>
+    
+    <label for="historyInput">Gib die Pokerhand-Historie ein:</label>
+    <textarea id="historyInput" placeholder="Füge hier deine Pokerhand-Historie ein..."></textarea>
+    
+    <button onclick="convertToXML()">Konvertieren</button>
+
+    <h2>Ausgabe als XML:</h2>
+    <div id="output"></div>
+
     <script>
-    function parseHandHistory(history) {
-        const result = {};
-    
-        // Extract hand info
-        const handInfo = history.match(/Hand #(\S+) - ([\d-: ]+)/);
-        if (handInfo) {
-            result.handNumber = handInfo[1];
-            result.dateTime = handInfo[2];
-        } else {
-            console.error("Hand info not found");
+        function convertToXML() {
+            const inputText = document.getElementById('historyInput').value;
+
+            // Beispiel-Daten aus der Pokerhand-Historie extrahieren
+            const handData = extractHandData(inputText);
+
+            // Generiere XML
+            const xml = generateXML(handData);
+            document.getElementById('output').textContent = xml;
         }
-    
-        // Extract game info
-        const gameInfo = history.match(/Game: (.+?) - Blinds (\d+)\/(\d+)/);
-        if (gameInfo) {
-            result.gameType = gameInfo[1];
-            result.smallBlind = parseInt(gameInfo[2]);
-            result.bigBlind = parseInt(gameInfo[3]);
-        } else {
-            console.error("Game info not found");
-        }
-    
-        // Extract site and table
-        const site = history.match(/Site: (.+)/);
-        result.site = site ? site[1] : "Unknown";
-    
-        const table = history.match(/Table: (.+)/);
-        result.table = table ? table[1] : "Unknown";
-    
-        // Extract seats and players
-        const seats = [...history.matchAll(/Seat (\d+): (.+?) \((\d+)\)(.*)/g)];
-        result.players = seats.map(seat => ({
-            seat: parseInt(seat[1]),
-            name: seat[2],
-            chips: parseInt(seat[3]),
-            status: seat[4].trim() || "active"
-        }));
-    
-        // Extract blinds and dealer
-        const dealer = history.match(/(.+) has the dealer button/);
-        result.dealer = dealer ? dealer[1] : "Unknown";
-    
-        const smallBlind = history.match(/(.+) posts small blind (\d+)/);
-        if (smallBlind) {
-            result.smallBlindPlayer = { name: smallBlind[1], amount: parseInt(smallBlind[2]) };
-        } else {
-            console.error("Small blind info not found");
-        }
-    
-        const bigBlind = history.match(/(.+) posts big blind (\d+)/);
-        if (bigBlind) {
-            result.bigBlindPlayer = { name: bigBlind[1], amount: parseInt(bigBlind[2]) };
-        } else {
-            console.error("Big blind info not found");
-        }
-    
-        // Extract actions
-        const actions = [...history.matchAll(/(\S+) (calls|folds|raises to) (\d+)?/g)];
-        result.actions = actions.map(action => ({
-            player: action[1],
-            action: action[2],
-            amount: action[3] ? parseInt(action[3]) : null
-        }));
-    
-        // Extract summary
-        const summary = history.match(/\*\* Summary \*\*\nBoard: \[(.*)\], Rabbit: \[(.*)\], Players: (\d+), Pots: (\d+), Total: (\d+), Rake: (\d+)/);
-        if (summary) {
-            result.summary = {
-                board: summary[1].split(" ").filter(Boolean),
-                rabbit: summary[2].split(" ").filter(Boolean),
-                players: parseInt(summary[3]),
-                pots: parseInt(summary[4]),
-                total: parseInt(summary[5]),
-                rake: parseInt(summary[6])
-            };
-        } else {
-            console.error("Summary info not found");
-        }
-    
-        return result;
+
+        function extractHandData(handHistory) {
+    if (!handHistory || typeof handHistory !== 'string') {
+        console.error("Invalid hand history input");
+        return {};
     }
-    
-    // Beispielhandhistorie testen
-    const handHistory = `
-    Hand #789664-2 - 2024-03-31 20:01:27
-    Game: NL Hold'em (0+0) - Blinds 15/30
-    Site: P0kerlions Braunschweig
-    Table: P0kerlions - Osterspezial - Table 1
-    Seat 1: papa147 (10000) - sitting out
-    Seat 2: Carola (10060)
-    Seat 4: WhitecrowJLN (9970)
-    Seat 5: Mitchi21 (9970)
-    Seat 6: PokermarRy07 (10000) - sitting out
-    Seat 7: Pokerchaos (10000)
-    Seat 8: Armenia-1972 (10000)
-    Seat 9: BigM (10000)
-    Carola has the dealer button
-    WhitecrowJLN posts small blind 15
-    Mitchi21 posts big blind 30
-    ** Hole Cards ** [8 players]
-    PokermarRy07 folds
-    Pokerchaos folds
-    Armenia-1972 folds
-    BigM calls 30
-    papa147 calls 30
-    Carola folds
-    WhitecrowJLN calls 15
-    Mitchi21 raises to 120
-    BigM folds
-    papa147 folds
-    WhitecrowJLN folds
-    Mitchi21 refunded 90
-    Mitchi21 wins Pot (120)
-    ** Summary **
-    Board: [], Rabbit: [Qc 5d Jh 4s 9h], Players: 8, Pots: 1, Total: 120, Rake: 0, End: PreFlop
-    Seat 1: papa147 (-30) [4d Tc] Folded on PreFlop
-    Seat 2: Carola (+0) [3h 4c] Folded on PreFlop
-    Seat 4: WhitecrowJLN (-30) [8c 4h] Folded on PreFlop
-    Seat 5: Mitchi21 (+90) [As Ah] Won without Showdown
-    Seat 6: PokermarRy07 (+0) [9s 5s] Folded on PreFlop
-    Seat 7: Pokerchaos (+0) [2h 5h] Folded on PreFlop
-    Seat 8: Armenia-1972 (+0) [3c Kh] Folded on PreFlop
-    Seat 9: BigM (-30) [8s Qh] Folded on PreFlop
-    `;
-    
-    console.log(parseHandHistory(handHistory));
-    
-        </script>
+
+    // Log the input to check what you're working with
+    console.log("Hand History Input: ", handHistory);
+
+    const lines = handHistory.split('\n');
+
+    let handData = {};
+    let currentSection = null;
+
+    lines.forEach(line => {
+        // Trim the line to remove unnecessary spaces
+        const trimmedLine = line.trim();
+
+        if (trimmedLine.startsWith("Hand #")) {
+            handData.handNumber = trimmedLine.split(" - ")[0].trim();
+            handData.date = trimmedLine.split(" - ")[1].trim();
+        } else if (trimmedLine.startsWith("Game:")) {
+            handData.gameType = trimmedLine.split(":")[1].trim();
+        } else if (trimmedLine.startsWith("Site:")) {
+            handData.site = trimmedLine.split(":")[1].trim();
+        } else if (trimmedLine.startsWith("Table:")) {
+            handData.tableName = trimmedLine.split(":")[1].trim();
+        } else if (trimmedLine.startsWith("Seat")) {
+            const seatData = trimmedLine.split(":");
+            const seatNumber = seatData[0].trim();
+            const playerData = seatData[1].trim();
+            handData.players = handData.players || [];
+            handData.players.push({ seat: seatNumber, player: playerData });
+        } else if (trimmedLine.startsWith("** Flop **") || trimmedLine.startsWith("** Turn **") || trimmedLine.startsWith("** River **")) {
+            handData.board = trimmedLine.replace("**", "").replace("**", "").trim();
+        } else if (trimmedLine.startsWith("** Summary **")) {
+            currentSection = "summary";
+        } else if (currentSection === "summary") {
+            // Process the summary here as needed
+        }
+    });
+
+    console.log("Parsed Hand Data: ", handData);
+    return handData;
+}
+
+
+        function generateXML(data) {
+            let xml = `<?xml version="1.0" encoding="utf-8" ?>\n<hand number="${data.handNumber}" date="${data.date}">\n`;
+
+            // Game Information
+            xml += `<game>${data.game}</game>\n`;
+            xml += `<site>${data.site}</site>\n`;
+            xml += `<table>${data.table}</table>\n`;
+
+            // Players
+            xml += `<players>\n`;
+            data.players.forEach(player => {
+                xml += `<player seat="${player.seat}" chips="${player.chips}" />\n`;
+            });
+            xml += `</players>\n`;
+
+            // Actions
+            xml += `<actions>\n`;
+            data.actions.forEach(action => {
+                xml += `<action>${action}</action>\n`;
+            });
+            xml += `</actions>\n`;
+
+            xml += `</hand>`;
+
+            return xml;
+        }
+    </script>
 </body>
 </html>
