@@ -1,110 +1,281 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Poker Hand History to XML</title>
+    <title>Poker Hand History Converter</title>
+<style>body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+textarea {
+    width: 100%;
+    height: 200px;
+    margin-bottom: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007BFF;
+    color: #fff;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+pre {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+</style>
 </head>
 <body>
-    <h1>Poker Hand History zu XML Konverter</h1>
-    <textarea id="historyInput" rows="10" cols="50" placeholder="Füge hier deine Poker-Hand-Historie ein..."></textarea><br>
-    <button onclick="convertToXML()">Konvertieren</button>
-    <pre id="output"></pre>
+    <div class="container">
+        <h1>Poker Hand History Converter</h1>
+        <textarea id="handHistory" placeholder="Enter Poker Hand History here..."></textarea>
+        <button id="convertButton">Convert to XML</button>
+        <pre id="xmlOutput"></pre>
+    </div>
+    <script> 
+ document.getElementById('convertButton').addEventListener('click', function() {
+    const handHistory = document.getElementById('handHistory').value;
+    const xmlOutput = document.getElementById('xmlOutput');
 
-    <script>
-        function convertToXML() {
-            const inputText = document.getElementById('historyInput').value;
+    // Parse the hand history and convert to XML
+    const xml = convertToXml(handHistory);
 
-            // Beispiel-Daten aus der Pokerhand-Historie extrahieren
-            const handData = extractHandData(inputText);
+    // Display the XML output
+    xmlOutput.textContent = xml;
+});
 
-            if (!handData || Object.keys(handData).length === 0) {
-                console.error("Ungültige Hand-Daten extrahiert");
-                return;
-            }
+function convertToXml(handHistory) {
+    // Extract relevant information from the hand history
+    const lines = handHistory.split('\n');
+    const handIdMatch = lines[0]?.match(/Hand #(\d+-\d+)/);
+    const dateMatch = lines[0]?.match(/(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})/);
+    const gameTypeMatch = lines[1]?.match(/Game: (.+)/);
+    const blindsMatch = lines[1]?.match(/Blinds (\d+)\/(\d+)/);
+    const siteMatch = lines[2]?.match(/Site: (.+)/);
+    const tableMatch = lines[3]?.match(/Table: (.+)/);
+    const players = [];
 
-            // Generiere XML
-            const xml = generateXML(handData);
-            document.getElementById('output').textContent = xml;
-        }
+    if (!handIdMatch || !dateMatch || !gameTypeMatch || !blindsMatch || !siteMatch || !tableMatch) {
+        return 'Error: Invalid hand history format.';
+    }
 
-        function extractHandData(handHistory) {
-            if (!handHistory || typeof handHistory !== 'string') {
-                console.error("Ungültige Hand-Historie Eingabe");
-                return {};
-            }
+    const handId = handIdMatch[1];
+    const date = dateMatch[1];
+    const gameType = gameTypeMatch[1];
+    const blinds = blindsMatch;
+    const site = siteMatch[1];
+    const table = tableMatch[1];
 
-            console.log("Hand-Historie Eingabe: ", handHistory);
-
-            const lines = handHistory.split('\n');
-            let handData = {};
-            let currentSection = null;
-
-            lines.forEach(line => {
-                const trimmedLine = line.trim();
-
-                // Parsing different sections
-                if (trimmedLine.startsWith("Hand #")) {
-                    handData.handNumber = trimmedLine.split(" - ")[0].trim();
-                    handData.date = trimmedLine.split(" - ")[1].trim();
-                } else if (trimmedLine.startsWith("Game:")) {
-                    handData.gameType = trimmedLine.split(":")[1].trim();
-                } else if (trimmedLine.startsWith("Site:")) {
-                    handData.site = trimmedLine.split(":")[1].trim();
-                } else if (trimmedLine.startsWith("Table:")) {
-                    handData.tableName = trimmedLine.split(":")[1].trim();
-                } else if (trimmedLine.startsWith("Seat")) {
-                    const seatData = trimmedLine.split(":");
-                    const seatNumber = seatData[0].trim();
-                    const playerData = seatData[1].trim();
-
-                    // Ensure players array exists
-                    handData.players = handData.players || [];
-                    handData.players.push({ seat: seatNumber, player: playerData, chips: "" }); // Default empty chips for now
-                } else if (trimmedLine.startsWith("** Flop **") || trimmedLine.startsWith("** Turn **") || trimmedLine.startsWith("** River **")) {
-                    handData.board = trimmedLine.replace("**", "").replace("**", "").trim();
-                } else if (trimmedLine.startsWith("** Summary **")) {
-                    currentSection = "summary";
-                } else if (currentSection === "summary") {
-                    
-                }
+    let playerIndex = 4;
+    while (lines[playerIndex] && lines[playerIndex].startsWith('Seat')) {
+        const playerMatch = lines[playerIndex].match(/Seat (\d+): (.+) \((\d+)\)/);
+        if (playerMatch) {
+            players.push({
+                seat: playerMatch[1],
+                name: playerMatch[2],
+                chips: playerMatch[3]
             });
-
-            console.log("Parsed Hand Data: ", handData);
-            return handData;
         }
+        playerIndex++;
+    }
 
-        function generateXML(data) {
-            let xml = `<?xml version="1.0" encoding="utf-8" ?>\n<hand number="${data.handNumber}" date="${data.date}">\n`;
+    const dealerMatch = lines[playerIndex]?.match(/(.+) has the dealer button/);
+    if (!dealerMatch) {
+        return 'Error: Dealer information not found.';
+    }
+    const dealer = dealerMatch[1];
+    playerIndex++;
 
-            // Game Information
-            xml += `<game>${data.gameType || "Unbekannt"}</game>\n`;
-            xml += `<site>${data.site || "Unbekannt"}</site>\n`;
-            xml += `<table>${data.tableName || "Unbekannt"}</table>\n`;
+    const smallBlindMatch = lines[playerIndex]?.match(/(.+) posts small blind (\d+)/);
+    const bigBlindMatch = lines[playerIndex + 1]?.match(/(.+) posts big blind (\d+)/);
+    if (!smallBlindMatch || !bigBlindMatch) {
+        return 'Error: Blind information not found.';
+    }
+    const smallBlind = smallBlindMatch;
+    const bigBlind = bigBlindMatch;
+    playerIndex += 2;
 
-            // Players
-            xml += `<players>\n`;
-            if (data.players && Array.isArray(data.players)) {
-                data.players.forEach(player => {
-                    // Only push the player details if the data exists
-                    xml += `<player seat="${player.seat}" chips="${player.chips || "0"}">${player.player}</player>\n`;
-                });
-            }
-            xml += `</players>\n`;
+    const holeCardsMatch = lines[playerIndex]?.match(/\*\* Hole Cards \*\* \[(\d+) players\]/);
+    if (!holeCardsMatch) {
+        return 'Error: Hole cards information not found.';
+    }
+    const holeCards = holeCardsMatch[1];
+    playerIndex++;
 
-            // Actions
-            xml += `<actions>\n`;
-            if (data.actions && Array.isArray(data.actions)) {
-                data.actions.forEach(action => {
-                    xml += `<action>${action}</action>\n`;
-                });
-            }
-            xml += `</actions>\n`;
-
-            xml += `</hand>`;
-
-            return xml;
+    const actions = [];
+    while (lines[playerIndex] && !lines[playerIndex].startsWith('** Flop **')) {
+        const actionMatch = lines[playerIndex].match(/(.+) (.+) (\d+)/);
+        if (actionMatch) {
+            actions.push({
+                player: actionMatch[1],
+                action: actionMatch[2],
+                amount: actionMatch[3]
+            });
         }
+        playerIndex++;
+    }
+
+    const flopMatch = lines[playerIndex]?.match(/\*\* Flop \*\* \[(.+)\]/);
+    if (!flopMatch) {
+        return 'Error: Flop information not found.';
+    }
+    const flop = flopMatch[1];
+    playerIndex++;
+
+    let turnMatch = null;
+    let riverMatch = null;
+
+    // Find Turn and River information
+    while (playerIndex < lines.length) {
+        console.log('Parsing line:', lines[playerIndex]);
+        if (!turnMatch) {
+            turnMatch = lines[playerIndex]?.match(/\*\* Turn \*\* \[(.+)\]/);
+            if (turnMatch) {
+                playerIndex++;
+                continue;
+            }
+        }
+        if (!riverMatch) {
+            riverMatch = lines[playerIndex]?.match(/\*\* River \*\* \[(.+)\]/);
+            if (riverMatch) {
+                playerIndex++;
+                continue;
+            }
+        }
+        playerIndex++;
+    }
+
+    if (!turnMatch) {
+        console.error('Turn line parsing failed. Line:', lines[playerIndex]);
+        return 'Error: Turn information not found. Please check the hand history format.';
+    }
+    const turn = turnMatch[1];
+
+    if (!riverMatch) {
+        console.error('River line parsing failed. Line:', lines[playerIndex]);
+        return 'Error: River information not found. Please check the hand history format.';
+    }
+    const river = riverMatch[1];
+
+    let summaryMatch = "";
+    while (playerIndex < lines.length) {
+        console.log('Parsing line:', lines[playerIndex]);
+        summaryMatch = lines[playerIndex]?.match(/\*\* Summary \*\*\s*Board:\s*\[(.+)\],\s*Rabbit:\s*\[(.*)\],\s*Players:\s*(\d+),\s*Pots:\s*(\d+),\s*Total:\s*(\d+),\s*Rake:\s*(\d+),\s*End:\s*(.+)/);
+        if (summaryMatch) {
+            break;
+        }
+        playerIndex++;
+    }
+
+    if (!summaryMatch) {
+        console.error('Summary line parsing failed. Line:', lines[playerIndex]);
+        return 'Error: Summary information not found.';
+    }
+
+    const board = summaryMatch[1];
+    const rabbit = summaryMatch[2] || 'None';
+    const playersCount = summaryMatch[3];
+    const pots = summaryMatch[4];
+    const total = summaryMatch[5];
+    const rake = summaryMatch[6];
+    const end = summaryMatch[7];
+
+    // Construct the XML
+    const xml = `<?xml version="1.0" encoding="utf-8" ?>
+<session sessioncode="${handId}">
+<general>
+    <mode>real</mode>
+    <gametype>${gameType}</gametype>
+    <tablename>${table}</tablename>
+    <tablecurrency>EUR</tablecurrency>
+    <duration>00:00:00</duration>
+    <gamecount>1</gamecount>
+    <startdate>${date}</startdate>
+    <currency>EUR</currency>
+    <nickname>${players[0].name}</nickname>
+    <bets>0</bets>
+    <wins>0</wins>
+    <chipsin>0</chipsin>
+    <chipsout>0</chipsout>
+    <statuspoints>0</statuspoints>
+    <awardpoints>0</awardpoints>
+    <ipoints>0</ipoints>
+</general>
+<game gamecode="${handId}">
+    <general>
+        <startdate>${date}</startdate>
+        <players>
+            ${players.map(player => `
+            <player seat="${player.seat}" chips="${player.chips}" win="0" bet="0" name="${player.name}" dealer="0"></player>
+            `).join('')}
+        </players>
+    </general>
+    <round no="0">
+        <action player="${smallBlind[1]}" cards="" no="1" sum="${smallBlind[2]}" type="1"></action>
+        <action player="${bigBlind[1]}" cards="" no="2" sum="${bigBlind[2]}" type="2"></action>
+    </round>
+    <round no="1">
+        ${actions.map((action, index) => `
+        <action player="${action.player}" cards="" no="${index + 3}" sum="${action.amount}" type="${action.action === 'calls' ? '3' : '0'}"></action>
+        `).join('')}
+    </round>
+    <round no="2">
+        <cards player="" type="Flop">${flop}</cards>
+    </round>
+    <round no="3">
+        <cards player="" type="Turn">${turn}</cards>
+    </round>
+    <round no="4">
+        <cards player="" type="River">${river}</cards>
+    </round>
+    <summary>
+        <board>${board}</board>
+        <rabbit>${rabbit}</rabbit>
+        <players>${playersCount}</players>
+        <pots>${pots}</pots>
+        <total>${total}</total>
+        <rake>${rake}</rake>
+        <end>${end}</end>
+        ${players.map(player => `
+        <player seat="${player.seat}" name="${player.name}" win="0" cards="" status=""></player>
+        `).join('')}
+    </summary>
+</game>
+</session>`;
+
+    return xml;
+}
     </script>
 </body>
 </html>
