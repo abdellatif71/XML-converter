@@ -222,11 +222,13 @@ pre {
             <action player="${smallBlind[1]}" cards="" no="1" sum="${smallBlind[2]}" type="1"></action>
             <action player="${bigBlind[1]}" cards="" no="2" sum="${bigBlind[2]}" type="2"></action>
         </round>
-        <round no="1">
-            ${actions.map((action, index) => `
-            <action player="${action.player}" cards="" no="${index + 3}" sum="${action.amount}" type="${action.action === 'calls' ? '3' : '0'}"></action>
-            `).join('')}
-        </round>
+    <round no="1">
+  ${actions.map((action, index) => `
+    <action player="${action.player}" cards="" no="${index + 3}" sum="€${action.amount}" type="${action.action === 'calls' ? '3' : '0'}"></action>
+    <cards player="${action.player}" type="Action">${action.cards || ''}</cards>
+  `).join('')}
+</round>
+
         <round no="2">
             <cards player="" type="Flop">${flop}</cards>
         </round>
